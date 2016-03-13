@@ -20,7 +20,7 @@
         See the License for the specific language governing permissions and
         limitations under the License.
     "/>
-    <script src="json2.js"></script>
+    <script src="static/json2.js"></script>
   </head> 
   <body bgcolor="white" height="100%" width="100%"> 
     <div id="debug"></div>
@@ -36,6 +36,34 @@ var H = canvas.height = window.innerHeight-50;
 var wscounter = 0;
 var socket;
 
+var color_index = 0;
+var stoped = 0;
+function getColor(){
+    if (color_index % 100 < 25){
+        g = 10 * color_index;
+        color = "#FF" + g.toString(16) + "00";
+    }else if(color_index % 100 < 50){
+        r = 10 * (49 - color_index);
+        color = "#" + r.toString(16) + "FF00";
+    }else if(color_index % 100 < 75) {
+        g = 10 * (74 - color_index);
+        b = 10 * (color_index - 50);
+        color = "#00" + g.toString(16) + r.toString(16)
+    }else {
+        r = 10 * (color_index - 75);
+        color = "#" + r.toString(16) + "00FF";
+    }
+    if (color_index < 100){
+        color_index++; 
+    }else{
+        color_index = 0;
+    }
+    
+    //console.log(color_index, color);
+    return color;
+}
+
+
 function debug(str) {
     var debugDiv = document.getElementById('debug');
     debugDiv.innerHTML = "" + str;
@@ -47,7 +75,7 @@ world = {};
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
     with(context) {
-        beginPath();                
+        beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
@@ -83,7 +111,7 @@ function renderFrame() {
     clearFrame();
     for (var key in world) {
         var entity = world[key];
-        drawCircle(context,prepEntity(entity));
+        drawCircle(context, prepEntity(entity));
     }
 }
 
@@ -125,7 +153,11 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just modified!
+    d = {};
+    d[entity] = data;
+    socket.send(JSON.stringify(d));
 }
+
 var counter = 0;
 function addEntityWithoutName(data) {
     var name = "X"+(counter++)%100;
@@ -231,15 +263,13 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour': getColor()});
 });
-
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':getColor()});
 });
-
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour': getColor(),
                           'radius':10});
 });
 
@@ -254,16 +284,34 @@ function wsSetup() {
     socket = new WebSocket(url);
     socket.onopen = function() {
         //XXX: TODO What are you going to do here?
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://" + host + "/world", false);
+        xhr.onreadystatechange = function() {
+            worldReturn = JSON.parse(xhr.responseText);
+            for (k in worldReturn){
+                world[k] = worldReturn[k];
+            }
+        }
+        xhr.send(null); 
     };
+
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
     };
+
     socket.onmessage = function(msg) {  
         try {
             debug("WebSocket Recv:" + msg.data);
-            //XXX: TODO What are you going to do here?            
+            //XXX: TODO What are you going to do here? 
+            message = JSON.parse(msg.data);
+            for (k in message){
+                world[k] = message[k]; 
+            } 
+           //console.log(message);
+            drawNextFrame();     
         } catch (e) {
             alert("socket on message: " + e);
+            //console.log(e);
         }
     }; 
 }
