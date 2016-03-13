@@ -21,6 +21,20 @@
         limitations under the License.
     "/>
     <script src="static/json2.js"></script>
+    <style>
+.button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+</style>
   </head> 
   <body bgcolor="white" height="100%" width="100%"> 
     <div id="debug"></div>
@@ -305,6 +319,10 @@ function wsSetup() {
             //XXX: TODO What are you going to do here? 
             message = JSON.parse(msg.data);
             for (k in message){
+                if (k == "clear") {
+                    world = {};
+                    break;
+                }
                 world[k] = message[k]; 
             } 
            //console.log(message);
@@ -318,7 +336,15 @@ function wsSetup() {
 
 wsSetup();
 
-
+function clean_board(){
+    url = document.location.origin + "/clear";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, false);
+    xhr.send(null); 
+    //sendJSONXMLHTTPRequest(url, null, null);
+    world = {};
+    socket.send(JSON.stringify({'clear': 'ok'}));
+}
 
 
 // 30 frames per second
@@ -326,5 +352,8 @@ setInterval( update, 1000/30.0);
 
 
     </script>
+<div style="z-index: 999; position: absolute; top: 25px; right: 2%">
+<button onclick="clean_board()" class="button" >Clear</button>
+</div>
 </body>
 </html>
